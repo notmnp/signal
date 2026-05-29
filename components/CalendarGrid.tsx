@@ -1,6 +1,10 @@
 "use client";
 
+import { motion } from "motion/react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import DayCell from "@/components/DayCell";
+import { Button } from "@/components/ui/button";
+import { todayISO } from "@/lib/date";
 
 interface CalendarGridProps {
   year: number;
@@ -15,19 +19,19 @@ interface CalendarGridProps {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** Today in the user's local timezone as "YYYY-MM-DD". */
-function todayISO(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+const gridVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.01 } },
+};
+const cellVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  show: { opacity: 1, scale: 1 },
+};
 
 /**
- * Month-view calendar. Generates one DayCell per day of the active month
- * (handling varying month lengths and leap years via native Date), aligns days
- * to weekday columns, and provides prev/next month navigation with year wrap.
+ * Month-view heatmap calendar. Generates one DayCell per day of the active
+ * month (leap-year safe via native Date), aligns to weekday columns, and
+ * provides prev/next month navigation with year wrap.
  */
 export default function CalendarGrid({
   year,
@@ -37,10 +41,7 @@ export default function CalendarGrid({
   onDaySelect,
   onMonthChange,
 }: CalendarGridProps) {
-  // new Date(year, month, 0) is the last day of `month` (month is 1-indexed
-  // here, so this resolves to day 0 of the following month).
   const daysInMonth = new Date(year, month, 0).getDate();
-  // Weekday (0=Sun) of the first of the month — number of leading blank cells.
   const leadingBlanks = new Date(year, month - 1, 1).getDay();
   const today = todayISO();
 
@@ -49,69 +50,72 @@ export default function CalendarGrid({
     year: "numeric",
   });
 
-  const goPrev = () => {
-    if (month === 1) onMonthChange(year - 1, 12);
-    else onMonthChange(year, month - 1);
-  };
-
-  const goNext = () => {
-    if (month === 12) onMonthChange(year + 1, 1);
-    else onMonthChange(year, month + 1);
-  };
+  const goPrev = () =>
+    month === 1 ? onMonthChange(year - 1, 12) : onMonthChange(year, month - 1);
+  const goNext = () =>
+    month === 12 ? onMonthChange(year + 1, 1) : onMonthChange(year, month + 1);
 
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <button
-          type="button"
-          onClick={goPrev}
-          aria-label="Previous month"
-          className="rounded-md border border-black/15 px-3 py-2 text-sm font-medium dark:border-white/20"
-        >
-          ← Prev
-        </button>
-        <h1 className="text-lg font-semibold tracking-tight">{monthLabel}</h1>
-        <button
-          type="button"
-          onClick={goNext}
-          aria-label="Next month"
-          className="rounded-md border border-black/15 px-3 py-2 text-sm font-medium dark:border-white/20"
-        >
-          Next →
-        </button>
+    <div className="rounded-2xl border border-border bg-card p-5 sm:p-8">
+      <div className="mb-7 flex items-center justify-between gap-4">
+        <Button variant="ghost" size="icon-lg" aria-label="Previous month" onClick={goPrev}>
+          <ChevronLeft />
+        </Button>
+        <h2 className="font-display text-2xl font-semibold tracking-tight">
+          {monthLabel}
+        </h2>
+        <Button variant="ghost" size="icon-lg" aria-label="Next month" onClick={goNext}>
+          <ChevronRight />
+        </Button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="mb-3 grid grid-cols-7 gap-2.5">
         {WEEKDAYS.map((weekday) => (
           <div
             key={weekday}
-            className="py-1 text-center text-xs font-medium text-black/50 dark:text-white/50"
+            className="text-center text-xs uppercase tracking-wider text-muted-foreground"
           >
-            {weekday}
+            {weekday.slice(0, 3)}
           </div>
         ))}
+      </div>
 
+      <motion.div
+        key={`${year}-${month}`}
+        variants={gridVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-7 gap-2.5"
+      >
         {Array.from({ length: leadingBlanks }, (_, i) => (
           <div key={`blank-${i}`} aria-hidden />
         ))}
-
         {days.map((day) => {
-          const date = `${year}-${String(month).padStart(2, "0")}-${String(
-            day
-          ).padStart(2, "0")}`;
+          const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           return (
-            <DayCell
-              key={date}
-              date={date}
-              completedCount={completionsByDate[date] ?? 0}
-              totalHabits={totalHabits}
-              isToday={date === today}
-              onSelect={onDaySelect}
-            />
+            <motion.div key={date} variants={cellVariants}>
+              <DayCell
+                date={date}
+                completedCount={completionsByDate[date] ?? 0}
+                totalHabits={totalHabits}
+                isToday={date === today}
+                onSelect={onDaySelect}
+              />
+            </motion.div>
           );
         })}
+      </motion.div>
+
+      <div className="mt-7 flex items-center justify-end gap-2 text-xs text-muted-foreground">
+        <span>Less</span>
+        <span className="size-3.5 rounded-[5px] border border-border" />
+        <span className="size-3.5 rounded-[5px] bg-ink/14" />
+        <span className="size-3.5 rounded-[5px] bg-ink/30" />
+        <span className="size-3.5 rounded-[5px] bg-ink/60" />
+        <span className="size-3.5 rounded-[5px] bg-ink" />
+        <span>More</span>
       </div>
     </div>
   );

@@ -1,22 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "motion/react";
+import { ArrowRight } from "lucide-react";
+import HabitCheck from "@/components/HabitCheck";
+import Logo from "@/components/Logo";
+import { Button } from "@/components/ui/button";
 import type { Habit } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface DailyChecklistProps {
   habits: Habit[];
   /** Habit ids completed on the active Log Date. */
   completedIds: string[];
-  /** Called when an item is checked or unchecked; the parent persists the toggle. */
+  /** Called when an item is toggled; the parent persists the change. */
   onToggle: (habitId: string) => void;
 }
 
-/**
- * Renders every habit as a checkable item for the active Log Date. An item is
- * checked when its id is in `completedIds`. Toggling reports back via `onToggle`
- * (the parent writes to storage). Shows an empty state linking to /habits when
- * there are no habits.
- */
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05 } },
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0 },
+};
+
 export default function DailyChecklist({
   habits,
   completedIds,
@@ -24,45 +33,68 @@ export default function DailyChecklist({
 }: DailyChecklistProps) {
   if (habits.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-black/15 p-8 text-center dark:border-white/20">
-        <p className="text-black/60 dark:text-white/60">
-          No habits yet. Create one to start logging your days.
-        </p>
-        <Link
-          href="/habits"
-          className="mt-4 inline-block rounded-md bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-        >
-          Go to Habits
-        </Link>
+      <div className="flex flex-col items-center gap-5 rounded-3xl border border-dashed border-border bg-card/40 px-6 py-16 text-center">
+        <Logo showWordmark={false} className="scale-125 opacity-90" />
+        <div className="space-y-1.5">
+          <p className="font-display text-lg font-semibold">No signal yet</p>
+          <p className="max-w-xs text-sm text-muted-foreground">
+            Create your first habit and it&apos;ll show up here, ready to check
+            off each day.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/habits">
+            Add a habit
+            <ArrowRight />
+          </Link>
+        </Button>
       </div>
     );
   }
 
   return (
-    <ul className="flex flex-col gap-2">
+    <motion.ul
+      variants={listVariants}
+      initial="hidden"
+      animate="show"
+      className="flex flex-col gap-2.5"
+    >
       {habits.map((habit) => {
         const checked = completedIds.includes(habit.id);
         return (
-          <li key={habit.id}>
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-black/10 p-4 dark:border-white/15">
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() => onToggle(habit.id)}
-                className="mt-1 size-4"
-              />
-              <span className="min-w-0">
-                <span className="block font-medium">{habit.name}</span>
+          <motion.li key={habit.id} variants={itemVariants}>
+            <motion.button
+              type="button"
+              onClick={() => onToggle(habit.id)}
+              whileTap={{ scale: 0.99 }}
+              aria-pressed={checked}
+              className={cn(
+                "group flex w-full items-start gap-3.5 rounded-2xl border p-4 text-left transition-colors",
+                checked
+                  ? "border-transparent bg-muted"
+                  : "border-border bg-card hover:bg-muted/50"
+              )}
+            >
+              <HabitCheck checked={checked} />
+              <span className="min-w-0 pt-0.5">
+                <span
+                  className={cn(
+                    "block font-medium transition-colors",
+                    checked && "text-muted-foreground"
+                  )}
+                >
+                  {habit.name}
+                </span>
                 {habit.description && (
-                  <span className="mt-0.5 block text-sm text-black/60 dark:text-white/60">
+                  <span className="mt-0.5 block text-sm text-muted-foreground">
                     {habit.description}
                   </span>
                 )}
               </span>
-            </label>
-          </li>
+            </motion.button>
+          </motion.li>
         );
       })}
-    </ul>
+    </motion.ul>
   );
 }

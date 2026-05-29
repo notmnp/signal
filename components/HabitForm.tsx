@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import type { Habit } from "@/lib/types";
 
 interface HabitFormProps {
@@ -13,11 +17,8 @@ interface HabitFormProps {
 }
 
 /**
- * Controlled create/edit form for a habit.
- *
- * Validates that Name is non-empty before submitting; on failure it shows an
- * inline error and does not call `onSubmit`. Storage is the parent's concern —
- * this component only reports the entered values back via `onSubmit`.
+ * Controlled create/edit form for a habit. Validates that Name is non-empty
+ * before submitting; storage is the parent's concern.
  */
 export default function HabitForm({ habit, onSubmit, onCancel }: HabitFormProps) {
   const [name, setName] = useState(habit?.name ?? "");
@@ -28,7 +29,7 @@ export default function HabitForm({ habit, onSubmit, onCancel }: HabitFormProps)
     event.preventDefault();
     const trimmedName = name.trim();
     if (trimmedName === "") {
-      setError("Name is required.");
+      setError("Give your habit a name.");
       return;
     }
     setError(null);
@@ -36,50 +37,44 @@ export default function HabitForm({ habit, onSubmit, onCancel }: HabitFormProps)
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-      <h2 className="text-lg font-semibold">
-        {habit ? "Edit habit" : "New habit"}
-      </h2>
-
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Name</span>
-        <input
-          type="text"
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="habit-name">Name</Label>
+        <Input
+          id="habit-name"
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            setName(event.target.value);
+            if (error) setError(null);
+          }}
+          placeholder="e.g. Read for 20 minutes"
           autoFocus
           aria-invalid={error ? true : undefined}
-          className="rounded-md border border-black/15 px-3 py-2 dark:border-white/20 dark:bg-neutral-900"
         />
-        {error && <span className="text-sm text-red-600">{error}</span>}
-      </label>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">
-          Description <span className="text-black/40 dark:text-white/40">(optional)</span>
-        </span>
-        <textarea
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="habit-description">
+          Description
+          <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
+        </Label>
+        <Textarea
+          id="habit-description"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
+          placeholder="A note to your future self about why this matters."
           rows={3}
-          className="rounded-md border border-black/15 px-3 py-2 dark:border-white/20 dark:bg-neutral-900"
         />
-      </label>
+      </div>
 
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-        >
-          {habit ? "Save changes" : "Create habit"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-black/15 px-4 py-2 text-sm font-medium dark:border-white/20"
-        >
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="lg" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
+        <Button type="submit" size="lg">
+          {habit ? "Save changes" : "Create habit"}
+        </Button>
       </div>
     </form>
   );

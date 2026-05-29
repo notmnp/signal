@@ -1,5 +1,9 @@
 "use client";
 
+import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { addDays, parseISODate, relativeLabel, todayISO } from "@/lib/date";
+
 interface DayNavProps {
   /** Current Log Date as an ISO 8601 date string, e.g. "2026-05-29". */
   date: string;
@@ -7,63 +11,60 @@ interface DayNavProps {
   onChange: (date: string) => void;
 }
 
-/** Format a "YYYY-MM-DD" Date object back into a "YYYY-MM-DD" string. */
-function toISODate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-/** Parse "YYYY-MM-DD" into a local-time Date at midnight (no timezone shift). */
-function parseISODate(date: string): Date {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
-/** Return the ISO date `delta` calendar days away from `date`. */
-function addDays(date: string, delta: number): string {
-  const d = parseISODate(date);
-  d.setDate(d.getDate() + delta);
-  return toISODate(d);
-}
-
 /**
- * Controlled day stepper. Displays the Log Date prominently and steps it one
- * calendar day at a time via the parent's onChange. Navigation is unrestricted
- * in both directions — past and future days are allowed.
+ * Controlled day stepper for the Daily Habit Log. Shows the date prominently
+ * with a relative eyebrow (Today/Yesterday/Tomorrow), steps one day in either
+ * direction, and offers a quick jump back to today. Navigation is unrestricted.
  */
 export default function DayNav({ date, onChange }: DayNavProps) {
-  const label = parseISODate(date).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
+  const parsed = parseISODate(date);
+  const relative = relativeLabel(date);
+  const weekday = parsed.toLocaleDateString("en-US", { weekday: "long" });
+  const fullDate = parsed.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
+    year: "numeric",
   });
+  const isToday = date === todayISO();
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <button
-        type="button"
-        onClick={() => onChange(addDays(date, -1))}
+    <div className="flex items-center justify-between gap-3">
+      <Button
+        variant="outline"
+        size="icon-lg"
         aria-label="Previous day"
-        className="rounded-md border border-black/15 px-3 py-2 text-sm font-medium dark:border-white/20"
+        onClick={() => onChange(addDays(date, -1))}
       >
-        ← Prev
-      </button>
+        <ChevronLeft />
+      </Button>
 
-      <h1 className="text-center text-lg font-semibold tracking-tight">
-        {label}
-      </h1>
+      <div className="text-center">
+        <div className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+          {relative ?? weekday}
+        </div>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          {fullDate}
+        </h1>
+        {!isToday && (
+          <button
+            type="button"
+            onClick={() => onChange(todayISO())}
+            className="mx-auto mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <RotateCcw className="size-3" />
+            Back to today
+          </button>
+        )}
+      </div>
 
-      <button
-        type="button"
-        onClick={() => onChange(addDays(date, 1))}
+      <Button
+        variant="outline"
+        size="icon-lg"
         aria-label="Next day"
-        className="rounded-md border border-black/15 px-3 py-2 text-sm font-medium dark:border-white/20"
+        onClick={() => onChange(addDays(date, 1))}
       >
-        Next →
-      </button>
+        <ChevronRight />
+      </Button>
     </div>
   );
 }

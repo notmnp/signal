@@ -1,35 +1,30 @@
 "use client";
 
+import { motion } from "motion/react";
+import { cn } from "@/lib/utils";
+
 interface DayCellProps {
-  /** ISO date string for this cell, e.g. "2026-05-29". */
   date: string;
-  /** Number of habits completed on this date. */
   completedCount: number;
-  /** Total number of habits currently defined. */
   totalHabits: number;
-  /** Whether this cell represents the current calendar day. */
   isToday: boolean;
   onSelect: (date: string) => void;
 }
 
-type VisualState = "neutral" | "partial" | "full";
-
-function deriveState(completedCount: number, totalHabits: number): VisualState {
-  if (totalHabits === 0 || completedCount === 0) return "neutral";
-  if (completedCount === totalHabits) return "full";
-  return "partial";
+/** Monochrome ink fill intensity scaled to the day's completion ratio. */
+function intensityClass(completedCount: number, totalHabits: number): string {
+  if (totalHabits === 0 || completedCount === 0)
+    return "border-border bg-transparent hover:bg-muted";
+  const ratio = completedCount / totalHabits;
+  if (ratio >= 1) return "border-transparent bg-ink text-ink-foreground";
+  if (ratio >= 0.66) return "border-transparent bg-ink/60 text-ink-foreground";
+  if (ratio >= 0.34) return "border-transparent bg-ink/30";
+  return "border-transparent bg-ink/14";
 }
 
-const STATE_STYLES: Record<VisualState, string> = {
-  neutral: "bg-transparent text-black/70 dark:text-white/70",
-  partial: "bg-emerald-200 text-emerald-950 dark:bg-emerald-800/60 dark:text-emerald-50",
-  full: "bg-emerald-500 text-white dark:bg-emerald-500",
-};
-
 /**
- * Purely presentational calendar cell. Derives a neutral/partial/full visual
- * state from the completion props, highlights today, and fires onSelect on
- * click. Holds no internal state.
+ * Purely presentational heatmap cell. Derives an emerald intensity from the
+ * completion ratio, rings today, scales on hover, and fires onSelect on click.
  */
 export default function DayCell({
   date,
@@ -38,21 +33,32 @@ export default function DayCell({
   isToday,
   onSelect,
 }: DayCellProps) {
-  const state = deriveState(completedCount, totalHabits);
-  const dayNumber = Number(date.split("-")[2]);
+  const day = Number(date.split("-")[2]);
 
   return (
-    <button
+    <motion.button
       type="button"
       onClick={() => onSelect(date)}
-      aria-label={`${date}${isToday ? " (today)" : ""}`}
-      className={[
-        "flex aspect-square items-center justify-center rounded-md text-sm font-medium transition-colors",
-        STATE_STYLES[state],
-        isToday ? "ring-2 ring-black ring-offset-1 dark:ring-white" : "",
-      ].join(" ")}
+      whileHover={{ scale: 1.09 }}
+      whileTap={{ scale: 0.94 }}
+      aria-label={`${date}${isToday ? " (today)" : ""}: ${completedCount} of ${totalHabits} completed`}
+      title={`${completedCount}/${totalHabits} completed`}
+      className={cn(
+        "relative grid aspect-square place-items-center rounded-lg border text-sm transition-colors",
+        intensityClass(completedCount, totalHabits),
+        isToday && "ring-2 ring-foreground ring-offset-2 ring-offset-background"
+      )}
     >
-      {dayNumber}
-    </button>
+      <span
+        className={cn(
+          "tabular-nums",
+          totalHabits === 0 || completedCount === 0
+            ? "text-muted-foreground"
+            : "text-current"
+        )}
+      >
+        {day}
+      </span>
+    </motion.button>
   );
 }

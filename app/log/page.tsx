@@ -2,19 +2,12 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import CompletionRing from "@/components/CompletionRing";
 import DailyChecklist from "@/components/DailyChecklist";
 import DayNav from "@/components/DayNav";
 import { useCompletions } from "@/hooks/useCompletions";
 import { useHabits } from "@/hooks/useHabits";
-
-/** Today in the user's local timezone as a "YYYY-MM-DD" string. */
-function todayISO(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+import { todayISO } from "@/lib/date";
 
 /** True for a well-formed, real "YYYY-MM-DD" calendar date. */
 function isValidISODate(value: string | null): value is string {
@@ -22,17 +15,23 @@ function isValidISODate(value: string | null): value is string {
   const [year, month, day] = value.split("-").map(Number);
   const d = new Date(year, month - 1, day);
   return (
-    d.getFullYear() === year &&
-    d.getMonth() === month - 1 &&
-    d.getDate() === day
+    d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
   );
+}
+
+function summaryLine(completed: number, total: number): string {
+  if (total === 0) return "Nothing to track yet.";
+  if (completed === total) return "Every habit done for the day.";
+  if (completed === 0) return "A fresh slate. Check one off to begin.";
+  const left = total - completed;
+  return `${left} habit${left === 1 ? "" : "s"} left to go.`;
 }
 
 function LogView() {
   const searchParams = useSearchParams();
 
-  // Seed the Log Date from ?date when present and valid; otherwise today.
-  // The URL only seeds the initial state — day navigation updates state only.
+  // Seed the Log Date from a valid ?date param; otherwise today. The URL only
+  // seeds the initial state — day navigation updates state only.
   const [logDate, setLogDate] = useState<string>(() => {
     const param = searchParams.get("date");
     return isValidISODate(param) ? param : todayISO();
@@ -42,24 +41,41 @@ function LogView() {
   const { toggleCompletion, getCompletionsForDate } = useCompletions();
 
   const completedIds = getCompletionsForDate(logDate);
+  const completed = completedIds.length;
+  const total = habits.length;
 
   return (
-    <div className="flex flex-col gap-6">
+    <main className="mx-auto w-full max-w-2xl px-4 pt-8 pb-24">
       <DayNav date={logDate} onChange={setLogDate} />
-      <DailyChecklist
-        habits={habits}
-        completedIds={completedIds}
-        onToggle={(habitId) => toggleCompletion(habitId, logDate)}
-      />
-    </div>
+
+      {total > 0 && (
+        <div className="mt-6 flex items-center gap-4 rounded-2xl border border-border bg-card/50 p-4">
+          <CompletionRing completed={completed} total={total} />
+          <div>
+            <p className="font-display text-lg font-semibold">
+              {completed === total ? "All done" : "Today's progress"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {summaryLine(completed, total)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <DailyChecklist
+          habits={habits}
+          completedIds={completedIds}
+          onToggle={(habitId) => toggleCompletion(habitId, logDate)}
+        />
+      </div>
+    </main>
   );
 }
 
 /**
- * Daily Habit Log — the default screen.
- *
- * useSearchParams() requires a Suspense boundary, so the view that reads the
- * ?date seed is rendered inside one.
+ * Daily Habit Log — the app's primary screen. useSearchParams() requires a
+ * Suspense boundary, so the view that reads the ?date seed sits inside one.
  */
 export default function LogPage() {
   return (
