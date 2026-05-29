@@ -30,7 +30,11 @@ function writeCompletions(map: CompletionsMap): void {
 export function useCompletions() {
   const [completions, setCompletions] = useState<CompletionsMap>({});
 
+  // Hydrate from localStorage after mount. This must run in an effect (not a
+  // lazy initializer) so the first client render matches the server-rendered
+  // empty state and avoids a hydration mismatch.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional one-time hydration from localStorage
     setCompletions(readCompletions());
   }, []);
 
